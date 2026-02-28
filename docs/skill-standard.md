@@ -42,9 +42,25 @@ Minimum expectations:
   - each tool endpoint can be invoked with a minimal request
   - basic error handling works (invalid input produces expected error)
 
+## Submodule requirement (auditability)
+
+Every skill (except `_template`) **must** be tracked as a
+[git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules) pointing
+to its own repository. This guarantees:
+
+- Full commit history and provenance for every skill.
+- Reproducible checkouts — each commit of this repo produces the exact same
+  skill sources.
+- Clear separation of ownership — skill authors iterate in their own repo.
+
+See [adding-a-skill.md](adding-a-skill.md) for the step-by-step workflow.
+
+A CI check (`validate-submodules`) runs on every PR to enforce this rule.
+
 ## Skill completeness score (SCS)
 A skill is considered “shippable” when:
 - all required files exist
+- the skill is added as a git submodule (not committed directly)
 - README required sections are present
 - tests run successfully
 - a corresponding `memory:skill` issue exists in `8r4n/deerflow-ops` with verification evidence

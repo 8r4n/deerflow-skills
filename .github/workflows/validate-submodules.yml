@@ -1,0 +1,30 @@
+# Validate Submodules — ensure every skill (except _template) is a git submodule
+#
+# Runs on pull requests that touch the skills/ directory to enforce the
+# auditability requirement: all acquired skills must be tracked as submodules.
+
+name: Validate Submodules
+
+on:
+  pull_request:
+    paths:
+      - "skills/**"
+  push:
+    branches: [main]
+    paths:
+      - "skills/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Validate skill submodules
+        run: bash scripts/validate-skill-submodules.sh
