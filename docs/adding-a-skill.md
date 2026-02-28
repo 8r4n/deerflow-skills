@@ -36,7 +36,30 @@ git submodule add https://github.com/<org>/deerflow-skill-<name>.git skills/<nam
 git commit -m "Add <name> skill as submodule"
 ```
 
-## 4. Updating a skill
+## 4. Run the security audit locally
+
+Before opening a PR, verify that the skill image passes the security audit:
+
+```bash
+cd skills/<name>
+make audit   # generates SBOM with Syft and scans for CVEs with Grype
+```
+
+The `audit` target:
+1. Builds the skill Docker image.
+2. Runs [Syft](https://github.com/anchore/syft) to produce a Software Bill of
+   Materials (`sbom-<name>.spdx.json`).
+3. Runs [Grype](https://github.com/anchore/grype) to scan for known
+   vulnerabilities and fails if any **Critical** severity CVE is found.
+
+If Grype reports critical findings, update the skill's base image or dependencies
+to resolve them before adding the submodule to this repository.
+
+> **CI enforcement:** The `Security Audit` workflow automatically builds and scans
+> every changed skill on PRs and pushes to `main`. The `GHCR Publish` workflow
+> additionally gates image publishing on a passing Grype scan.
+
+## 5. Updating a skill
 
 To pull the latest commit from a skill's upstream repository:
 
@@ -48,7 +71,7 @@ git add skills/<name>
 git commit -m "Update <name> skill to latest"
 ```
 
-## 5. Cloning this repository
+## 6. Cloning this repository
 
 Anyone cloning `deerflow-skills` should initialize submodules:
 
