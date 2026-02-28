@@ -25,6 +25,7 @@ env:
 permissions:
   contents: read
   packages: write
+  security-events: write   # required to upload Grype SARIF results
 
 jobs:
   build-and-push:
@@ -65,9 +66,45 @@ jobs:
             type=raw,value=${{ inputs.image_tag }},enable=${{ inputs.image_tag != '' }}
 
       - name: Build and push image
+        id: build-push
         uses: docker/build-push-action@v6
         with:
           context: skills/${{ inputs.skill_name }}
-          push: true
+          push: false          # build locally first so we can scan before pushing
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          load: true           # load image into local Docker daemon for scanning
+
+      # ── SBOM generation (Syft) ────────────────────────────────────────────
+      - name: Generate SBOM with Syft
+        uses: anchore/sbom-action@v0.23.0
+        with:
+          image: "${{ env.IMAGE_BASE }}/${{ inputs.skill_name }}:latest"
+          artifact-name: "sbom-${{ inputs.skill_name }}.spdx.json"
+          output-file: "/tmp/sbom-${{ inputs.skill_name }}.spdx.json"
+          format: spdx-json
+
+      # ── Vulnerability scan (Grype) — blocks publish on critical findings ──
+      - name: Scan for vulnerabilities with Grype
+        id: grype
+        uses: anchore/scan-action@v7.3.2
+        with:
+          image: "${{ env.IMAGE_BASE }}/${{ inputs.skill_name }}:latest"
+          output-format: sarif
+          severity-cutoff: critical
+          fail-build: true
+
+      - name: Upload Grype SARIF report
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+          category: "grype-publish-${{ inputs.skill_name }}"
+
+      # ── Push only after security gate passes ──────────────────────────────
+      # Push the already-built image by re-tagging; avoids a second build.
+      - name: Push image to GHCR
+        run: |
+          for tag in $(echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n'); do
+            docker push "$tag"
+          done
