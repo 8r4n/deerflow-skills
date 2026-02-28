@@ -22,7 +22,7 @@ Push it to GitHub (e.g., `https://github.com/<org>/deerflow-skill-<name>`).
 > **Tip:** You can also use GitHub's "Use this template" feature if the
 > `_template` directory is published as a template repository.
 
-## 2. Customise the skill
+## 2. Customize the skill
 
 In the new repository, replace all `<skill-name>` placeholders and implement
 your skill following the [skill standard](skill-standard.md).
@@ -50,7 +50,7 @@ git commit -m "Update <name> skill to latest"
 
 ## 5. Cloning this repository
 
-Anyone cloning `deerflow-skills` should initialise submodules:
+Anyone cloning `deerflow-skills` should initialize submodules:
 
 ```bash
 git clone --recurse-submodules https://github.com/8r4n/deerflow-skills.git
