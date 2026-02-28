@@ -1,0 +1,71 @@
+# GHCR Publish — build and push skill container images to GitHub Container Registry
+#
+# Triggered manually with a skill name input. Builds and pushes the specified
+# skill's Docker image using the same authentication and tagging pattern as the
+# reference workflow in deerflow-ops.
+#
+# Prerequisites: The skill must have a Dockerfile at skills/<skill-name>/Dockerfile.
+
+name: GHCR Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      skill_name:
+        description: "Skill folder name under skills/ (e.g., my-skill)"
+        required: true
+      image_tag:
+        description: "Additional image tag (default: sha-<short-sha>)"
+        required: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BASE: ghcr.io/8r4n/deerflow-skills
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate skill directory
+        run: |
+          SKILL_DIR="skills/${{ inputs.skill_name }}"
+          if [ ! -d "$SKILL_DIR" ]; then
+            echo "::error::Skill directory '$SKILL_DIR' does not exist."
+            exit 1
+          fi
+          if [ ! -f "$SKILL_DIR/Dockerfile" ]; then
+            echo "::error::No Dockerfile found at '$SKILL_DIR/Dockerfile'."
+            exit 1
+          fi
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_BASE }}/${{ inputs.skill_name }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.image_tag }},enable=${{ inputs.image_tag != '' }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: skills/${{ inputs.skill_name }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
